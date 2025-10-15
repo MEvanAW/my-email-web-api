@@ -10,8 +10,6 @@ namespace MyEmailWebApi.DTO
         [EmailAddress]
         public string? Recipient { get; set; }
 
-        //public DateTime SentAt { get; set; }
-
         public string? Subject { get; set; }
     }
 }

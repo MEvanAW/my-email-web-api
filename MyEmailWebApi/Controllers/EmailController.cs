@@ -1,8 +1,11 @@
 using Ganss.Xss;
 using MailKit.Net.Smtp;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using MimeKit;
+using MyEmailWebApi.Data;
 using MyEmailWebApi.DTO;
+using MyEmailWebApi.Models;
 
 namespace MyEmailWebApi.Controllers
 {
@@ -25,13 +28,15 @@ namespace MyEmailWebApi.Controllers
         private const string USERNAME = "Username";
         #endregion
 
+        private readonly EmailContext _emailContext;
         private readonly IConfigurationSection _smtpConfig;
         private readonly ILogger<EmailController> _logger;
         // docs: https://www.nuget.org/packages/HtmlSanitizer/#readme-body-tab
         private readonly HtmlSanitizer _sanitizer;
 
-        public EmailController(ILogger<EmailController> logger, IConfiguration configRoot)
+        public EmailController(EmailContext emailContext, ILogger<EmailController> logger, IConfiguration configRoot)
         {
+            _emailContext = emailContext;
             _smtpConfig = configRoot.GetSection(SMTP);
             _logger = logger;
             _sanitizer = new();
@@ -40,22 +45,28 @@ namespace MyEmailWebApi.Controllers
         }
 
         [HttpPost(Name = "SendEmail")]
-        public IActionResult SendEmail([FromBody] SendEmailRequest request)
+        public async Task<IActionResult> SendEmail([FromBody] SendEmailRequest request)
         {
             // Building message.
             var bodyBuilder = new BodyBuilder();
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(_smtpConfig[FROM_NAME] ?? string.Empty, _smtpConfig[FROM_ADDRESS]));
             message.To.Add(new MailboxAddress(RECIPIENT, request.Recipient));
+            var emailHistory = new EmailHistory
+            {
+                Recipient = request.Recipient!
+            };
             if (request.Subject is not null)
             {
                 bodyBuilder.TextBody = request.Subject;
+                emailHistory.Subject = request.Subject;
                 message.Subject = request.Subject;
             }
             if (request.Body is not null)
             {
                 // Sanitize the body to prevent XSS attack or similar. Will strip script tag and onload attribute
                 bodyBuilder.HtmlBody = _sanitizer.SanitizeDocument(request.Body);
+                emailHistory.Body = bodyBuilder.HtmlBody;
             }
             message.Body = bodyBuilder.ToMessageBody();
 
@@ -68,7 +79,28 @@ namespace MyEmailWebApi.Controllers
                 client.Send(message);
                 client.Disconnect(true);
             }
+
+            // Saving email history to DB
+            emailHistory.SentAt = DateTime.Now;
+            _emailContext.Add(emailHistory);
+            await _emailContext.SaveChangesAsync();
+
             return Ok(string.Format(SEND_EMAIL_RESPONSE_FORMAT, request.Recipient));
+        }
+
+        [HttpGet(Name = "ListEmails")]
+        public async Task<IActionResult> ListEmails()
+        {
+            return Ok(await _emailContext.EmailHistories
+                .OrderByDescending((eh) => eh.SentAt)
+                .Select((eh) => new EmailHistoryDto
+                {
+                    Body = eh.Body,
+                    Recipient = eh.Recipient,
+                    Subject = eh.Subject,
+                    SentAt = eh.SentAt
+                })
+                .ToListAsync());
         }
     }
 }
