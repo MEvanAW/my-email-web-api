@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyEmailWebApi.Constants;
@@ -16,6 +15,9 @@ namespace MyEmailWebApi.Controllers
         private const string USER_CREATED_FORMAT = "User {0} has been created.";
         private const string DEPARTMENT = "department";
         private const string DEPARTMENTS_REQUIRED = "Departments field is required";
+        private const string INVALID_LOGIN_ATTEMPT = "Invalid login attempt.";
+        private const string USER_LOCKED_OUT_FORMAT = "User {0} account locked out.";
+        private const string USER_LOGIN_FORMAT = "User {0} logged in.";
         private const string USER_UPDATED_FORMAT = "User {0} has been updated";
         #endregion
 
@@ -84,6 +86,26 @@ namespace MyEmailWebApi.Controllers
             await runningTask;
             await _userManager.AddClaimsAsync(user, newDepartments.Select((department) => new Claim(DEPARTMENT, department)));
             return Ok(string.Format(USER_UPDATED_FORMAT, request.Email));
+        }
+
+        [HttpPost(Name = "LoginUser")]
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
+        {
+            var result = await _signInManager.PasswordSignInAsync(request.Email!, request.Password!, false, false);
+            if (result.IsLockedOut)
+            {
+                string userLockedOutMessage = string.Format(USER_LOCKED_OUT_FORMAT, request.Email);
+                _logger.LogWarning(userLockedOutMessage);
+                return BadRequest(userLockedOutMessage);
+            }
+            if (result.Succeeded)
+            {
+                string userLoggedInMessage = string.Format(USER_LOGIN_FORMAT, request.Email);
+                _logger.LogInformation(userLoggedInMessage);
+                // Identity automatically returns cookie
+                return Ok(userLoggedInMessage);
+            }
+            return BadRequest(INVALID_LOGIN_ATTEMPT);
         }
     }
 }
