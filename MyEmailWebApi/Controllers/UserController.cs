@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyEmailWebApi.Constants;
@@ -75,7 +76,7 @@ namespace MyEmailWebApi.Controllers
             if (excludedRoles.Count > 0)
             {
                 await runningTask;
-                runningTask = _userManager.RemoveFromRolesAsync(user, excludedRoles);
+                runningTask = _userManager.RemoveFromRolesAsync(user, excludedRoles.Intersect(await _userManager.GetRolesAsync(user)));
             }
             await runningTask;
             var departmentClaims = (await _userManager.GetClaimsAsync(user)).Where((claim) => claim.Type == DEPARTMENT);
@@ -106,6 +107,14 @@ namespace MyEmailWebApi.Controllers
                 return Ok(userLoggedInMessage);
             }
             return BadRequest(INVALID_LOGIN_ATTEMPT);
+        }
+
+        [Authorize(Roles = "Admin,Manager,Employee")]
+        [HttpGet(Name = "UserProfile")]
+        public async Task<IActionResult> Profile()
+        {
+            await Task.CompletedTask;
+            return Ok();
         }
     }
 }
