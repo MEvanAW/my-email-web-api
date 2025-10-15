@@ -1,4 +1,4 @@
-﻿namespace MyEmailWebApi.DTO
+﻿namespace MyEmailWebApi.DTO.EmailDto
 {
     public class EmailHistoryDto : SendEmailRequest
     {

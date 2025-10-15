@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MimeKit;
 using MyEmailWebApi.Data;
-using MyEmailWebApi.DTO;
+using MyEmailWebApi.DTO.EmailDto;
 using MyEmailWebApi.Models;
 
 namespace MyEmailWebApi.Controllers

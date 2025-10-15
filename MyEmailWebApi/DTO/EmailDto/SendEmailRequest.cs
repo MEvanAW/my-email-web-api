@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace MyEmailWebApi.DTO
+namespace MyEmailWebApi.DTO.EmailDto
 {
     public class SendEmailRequest
     {
