@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyEmailWebApi.Constants;
+using MyEmailWebApi.Data;
 using MyEmailWebApi.DTO.UserDto;
 using System.Security.Claims;
 
@@ -10,7 +11,7 @@ namespace MyEmailWebApi.Controllers
 {
     [ApiController]
     [Route("[controller]/[action]")]
-    public class UserController : ControllerBase
+    public class UserController(ILogger<UserController> logger, SignInManager<IdentityUser> signInManager, UserContext userContext, UserManager<IdentityUser> userManager) : ControllerBase
     {
         #region consts
         private const string USER_CREATED_FORMAT = "User {0} has been created.";
@@ -23,16 +24,10 @@ namespace MyEmailWebApi.Controllers
         private const string USER_UPDATED_FORMAT = "User {0} has been updated";
         #endregion
 
-        private readonly ILogger<UserController> _logger;
-        private readonly SignInManager<IdentityUser> _signInManager;
-        private readonly UserManager<IdentityUser> _userManager;
-
-        public UserController(ILogger<UserController> logger, SignInManager<IdentityUser> signInManager, UserManager<IdentityUser> userManager)
-        {
-            _logger = logger;
-            _signInManager = signInManager;
-            _userManager = userManager;
-        }
+        private readonly ILogger<UserController> _logger = logger;
+        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+        private readonly UserContext _userContext = userContext;
+        private readonly UserManager<IdentityUser> _userManager = userManager;
 
         [HttpPost(Name = "RegisterUser")]
         public async Task<IActionResult> Register([FromBody] RegisterUserRequest request)
@@ -110,7 +105,7 @@ namespace MyEmailWebApi.Controllers
             return BadRequest(INVALID_LOGIN_ATTEMPT);
         }
 
-        // Without sufficient authorization, automatically returns 404 code 
+        // Without sufficient authorization, automatically returns 404 code
         [Authorize(Roles = "Admin,Manager,Employee")]
         [HttpGet(Name = "UserProfile")]
         public async Task<IActionResult> Profile()
@@ -129,6 +124,62 @@ namespace MyEmailWebApi.Controllers
             response.Email = user.UserName;
             response.Roles = await rolesTask;
             return Ok(response);
+        }
+
+        // Without sufficient authorization, automatically returns 404 code
+        [Authorize(Roles = "Admin,Manager")]
+        [HttpGet(Name = "DepartmentUsers")]
+        public async Task<IActionResult> DepartmentUsers()
+        {
+            var userDepartments = User.Claims.Where((claim) => claim.Type == DEPARTMENT).Select((claim) => claim.Value);
+            var rolesTask = _userContext.Roles
+                .Select((role) => new IdentityRole
+                {
+                    Id = role.Id,
+                    Name = role.Name
+                })
+                .ToDictionaryAsync((role) => role.Id);
+            var userClaimsQueryable = _userContext.UserClaims
+                .Where((userClaim) => userClaim.ClaimType == DEPARTMENT && userDepartments.Contains(userClaim.ClaimValue))
+                .Select((userClaim) => new IdentityUserClaim<string>
+                {
+                    UserId = userClaim.UserId,
+                    ClaimValue = userClaim.ClaimValue
+                });
+            var rolesDictionary = await rolesTask;
+            var userClaims = await userClaimsQueryable.ToArrayAsync();
+            var userIds = userClaims.Select((userClaim) => userClaim.UserId).Distinct();
+            var usersTask = _userManager.Users
+                .Where((user) => userIds.Contains(user.Id))
+                .Select((user) => new IdentityUser
+                {
+                    Id = user.Id,
+                    UserName = user.UserName
+                })
+                .ToArrayAsync();
+            var userRolesQueryable = _userContext.UserRoles
+                .Where((userRole) => userIds.Contains(userRole.UserId));
+            var users = await usersTask;
+            var userRoles = await userRolesQueryable.ToArrayAsync();
+            var responseList = new List<UserProfileResponse>();
+            foreach (var userId in userIds)
+            {
+                responseList.Add(new UserProfileResponse
+                {
+                    Departments = userClaims
+                        .Where((userClaim) => userClaim.UserId == userId)
+                        .Select((userClaim) => userClaim.ClaimValue ?? string.Empty),
+                    Email = users.Where((user) => user.Id == userId).Select((user) => user.UserName).Single(),
+                    Roles = userRoles
+                        .Where((userRole) => userRole.UserId == userId)
+                        .Select((userRole) =>
+                        {
+                            rolesDictionary.TryGetValue(userRole.RoleId, out var role);
+                            return role?.Name ?? string.Empty;
+                        })
+                });
+            }
+            return Ok(responseList);
         }
     }
 }
