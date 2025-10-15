@@ -181,5 +181,60 @@ namespace MyEmailWebApi.Controllers
             }
             return Ok(responseList);
         }
+
+        // Without sufficient authorization, automatically returns 404 code
+        [Authorize(Roles = "Admin")]
+        [HttpGet(Name = "GetAll")]
+        public async Task<IActionResult> GetAll()
+        {
+            var rolesTask = _userContext.Roles
+                .Select((role) => new IdentityRole
+                {
+                    Id = role.Id,
+                    Name = role.Name
+                })
+                .ToDictionaryAsync((role) => role.Id);
+            var userClaimsQueryable = _userContext.UserClaims
+                .Where((userClaim) => userClaim.ClaimType == DEPARTMENT)
+                .Select((userClaim) => new IdentityUserClaim<string>
+                {
+                    UserId = userClaim.UserId,
+                    ClaimValue = userClaim.ClaimValue
+                });
+            var rolesDictionary = await rolesTask;
+            var userClaims = await userClaimsQueryable.ToArrayAsync();
+            var userIds = userClaims.Select((userClaim) => userClaim.UserId).Distinct();
+            var usersTask = _userManager.Users
+                .Where((user) => userIds.Contains(user.Id))
+                .Select((user) => new IdentityUser
+                {
+                    Id = user.Id,
+                    UserName = user.UserName
+                })
+                .ToArrayAsync();
+            var userRolesQueryable = _userContext.UserRoles
+                .Where((userRole) => userIds.Contains(userRole.UserId));
+            var users = await usersTask;
+            var userRoles = await userRolesQueryable.ToArrayAsync();
+            var responseList = new List<UserProfileResponse>();
+            foreach (var userId in userIds)
+            {
+                responseList.Add(new UserProfileResponse
+                {
+                    Departments = userClaims
+                        .Where((userClaim) => userClaim.UserId == userId)
+                        .Select((userClaim) => userClaim.ClaimValue ?? string.Empty),
+                    Email = users.Where((user) => user.Id == userId).Select((user) => user.UserName).Single(),
+                    Roles = userRoles
+                        .Where((userRole) => userRole.UserId == userId)
+                        .Select((userRole) =>
+                        {
+                            rolesDictionary.TryGetValue(userRole.RoleId, out var role);
+                            return role?.Name ?? string.Empty;
+                        })
+                });
+            }
+            return Ok(responseList);
+        }
     }
 }
