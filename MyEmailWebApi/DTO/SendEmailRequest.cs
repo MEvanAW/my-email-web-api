@@ -7,6 +7,7 @@ namespace MyEmailWebApi.DTO
         public string? Body { get; set; }
 
         [Required]
+        [EmailAddress]
         public string? Recipient { get; set; }
 
         //public DateTime SentAt { get; set; }
