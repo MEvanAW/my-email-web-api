@@ -1,0 +1,20 @@
+{
+  "body": "string",
+  "recipient": "user@example.com",
+  "subject": "string"
+}
+{
+  "body": "<!DOCTYPE html><html><head><title>Email Template</title></head><body><h1>Dear Fulan,</h1><p>Thank you for saving your data. Your request has been processed successfully.</p><p>Reference No: 07102025020010</p></body></html>",
+  "recipient": "fulan@mailtrap.io",
+  "subject": "Email Template"
+}
+{
+  "body": "<script>alert('xss')</script><div onload=\"alert('xss')\" style=\"background-color: rgba(0, 0, 0, 1)\">Test<img src=\"test.png\" style=\"background-image: url(javascript:alert('xss')); margin: 10px\"></div>",
+  "recipient": "fulanah@mailtrap.io",
+  "subject": "Test"
+}
+{
+  "body": "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Email Template</title><style>body {font-family: Arial, sans-serif;}.real-table {border-collapse: collapse;width: 60%;margin-top: 10px;}.real-table th, .real-table td {border: 1px solid #000;padding: 8px;text-align: left;}.real-table th {background-color: #f2f2f2;}.highlight {background-color: yellow;font-weight: bold;}</style></head><body><!-- <p>Yth. Fulan</p> --><p>Yth. Bapak/Ibu HRD & OPR HO,</p><p>Berikut Area Manager (AM) yang belum melakukan persetujuan atas pengajuan BA SPL karyawan sampai tanggal <span class=\"highlight\">15 Oktober 2025</span>:</p><!-- Looping Table Start --><table class=\"real-table\"><thead><tr><th>NIK AM</th><th>NAMA AM</th><th>CABANG</th></tr></thead><tbody><tr><th>19990101</th><th>FULANAH</th><th>KABUPATEN KLATEN</th></tr></tbody></table><!-- Looping Table End --><p>Saat ini pengajuan BA SPL karyawan dilanjutkan ke BM / DBMO. Namun apabila sampai tanggal <span class=\"highlight\">15 Oktober 2025</span> belum disetujui oleh BM / DBMO, maka pengajuan BA SPL akan autoapprove.</p><p>Terima kasih.</p><p><strong>NB:</strong> Mohon tidak membalas email ini. Email dikirim otomatis dari sistem.</p></body></html>",
+  "recipient": "hrd@opr.ho",
+  "subject": "Proses Persetujuan BA SPL"
+}
