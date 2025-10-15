@@ -10,7 +10,7 @@ using MyEmailWebApi.Models;
 namespace MyEmailWebApi.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("[controller]/[action]")]
     public class EmailController : ControllerBase
     {
         #region const
@@ -45,7 +45,7 @@ namespace MyEmailWebApi.Controllers
         }
 
         [HttpPost(Name = "SendEmail")]
-        public async Task<IActionResult> SendEmail([FromBody] SendEmailRequest request)
+        public async Task<IActionResult> Send([FromBody] SendEmailRequest request)
         {
             // Building message.
             var bodyBuilder = new BodyBuilder();
@@ -89,7 +89,7 @@ namespace MyEmailWebApi.Controllers
         }
 
         [HttpGet(Name = "ListEmails")]
-        public async Task<IActionResult> ListEmails()
+        public async Task<IActionResult> List()
         {
             return Ok(await _emailContext.EmailHistories
                 .OrderByDescending((eh) => eh.SentAt)
