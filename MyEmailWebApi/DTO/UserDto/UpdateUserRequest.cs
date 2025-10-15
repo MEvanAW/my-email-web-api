@@ -9,6 +9,7 @@ namespace MyEmailWebApi.DTO.UserDto
 
         [Required]
         [EmailAddress]
+        // Email as identifier
         public string? Email { get; set; }
 
         // IdentityUser can hold several IdentityRoles by design

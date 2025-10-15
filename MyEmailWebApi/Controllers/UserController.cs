@@ -15,7 +15,8 @@ namespace MyEmailWebApi.Controllers
         #region consts
         private const string USER_CREATED_FORMAT = "User {0} has been created.";
         private const string DEPARTMENT = "department";
-        private const string DEPARTMENTS_REQUIRED = "Departments field is required";
+        private const string DEPARTMENTS_REQUIRED = "Departments field is required.";
+        private const string FAILED_TO_FIND_USER_DATA = "Failed to find user data.";
         private const string INVALID_LOGIN_ATTEMPT = "Invalid login attempt.";
         private const string USER_LOCKED_OUT_FORMAT = "User {0} account locked out.";
         private const string USER_LOGIN_FORMAT = "User {0} logged in.";
@@ -42,7 +43,7 @@ namespace MyEmailWebApi.Controllers
             {
                 var userCreatedMessage = string.Format(USER_CREATED_FORMAT, request.Email);
                 _logger.LogInformation(userCreatedMessage);
-                return Ok(userCreatedMessage);
+                return StatusCode(201, userCreatedMessage);
             }
             foreach (var error in result.Errors)
             {
@@ -109,12 +110,25 @@ namespace MyEmailWebApi.Controllers
             return BadRequest(INVALID_LOGIN_ATTEMPT);
         }
 
+        // Without sufficient authorization, automatically returns 404 code 
         [Authorize(Roles = "Admin,Manager,Employee")]
         [HttpGet(Name = "UserProfile")]
         public async Task<IActionResult> Profile()
         {
-            await Task.CompletedTask;
-            return Ok();
+            var userTask = _userManager.GetUserAsync(User);
+            var response = new UserProfileResponse
+            {
+                Departments = User.Claims.Where((claim) => claim.Type == DEPARTMENT).Select((claim) => claim.Value)
+            };
+            var user = await userTask;
+            if (user is null)
+            {
+                return StatusCode(500, FAILED_TO_FIND_USER_DATA);
+            }
+            var rolesTask = _userManager.GetRolesAsync(user);
+            response.Email = user.UserName;
+            response.Roles = await rolesTask;
+            return Ok(response);
         }
     }
 }
