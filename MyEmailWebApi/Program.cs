@@ -40,8 +40,28 @@ app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
 {
-    var seeder = scope.ServiceProvider.GetRequiredService<Seeder>();
-    seeder.SeedRoles();
+    var seeder = scope.ServiceProvider.GetService<Seeder>();
+    if (seeder is not null)
+    {
+        var rolesTask = seeder.SeedRoles();
+        await rolesTask;
+        try
+        {
+            await seeder.SeedKpis();
+        }
+        catch (Exception e)
+        {
+            var logger = scope.ServiceProvider.GetService<ILogger>();
+            if (logger is not null)
+            {
+                logger.LogError(e.ToString());
+            }
+            else
+            {
+                Console.WriteLine(e);
+            }
+        }
+    }
 }
 
 app.Run();
