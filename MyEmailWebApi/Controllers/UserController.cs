@@ -10,7 +10,7 @@ using System.Security.Claims;
 namespace MyEmailWebApi.Controllers
 {
     [ApiController]
-    [Route("[controller]/[action]")]
+    [Route("[controller]")]
     public class UserController(ILogger<UserController> logger, SignInManager<IdentityUser> signInManager, UserContext userContext, UserManager<IdentityUser> userManager) : ControllerBase
     {
         #region consts
@@ -29,7 +29,7 @@ namespace MyEmailWebApi.Controllers
         private readonly UserContext _userContext = userContext;
         private readonly UserManager<IdentityUser> _userManager = userManager;
 
-        [HttpPost(Name = "RegisterUser")]
+        [HttpPost("[action]", Name = "RegisterUser")]
         public async Task<IActionResult> Register([FromBody] RegisterUserRequest request)
         {
             var user = new IdentityUser { UserName = request.Email, Email = request.Email };
@@ -47,7 +47,7 @@ namespace MyEmailWebApi.Controllers
             return BadRequest(ModelState);
         }
 
-        [HttpPost(Name = "UpdateUser")]
+        [HttpPost("[action]", Name = "UpdateUser")]
         public async Task<IActionResult> Update([FromBody] UpdateUserRequest request)
         {
             var userTask = _userManager.Users
@@ -85,7 +85,7 @@ namespace MyEmailWebApi.Controllers
             return Ok(string.Format(USER_UPDATED_FORMAT, request.Email));
         }
 
-        [HttpPost(Name = "LoginUser")]
+        [HttpPost("[action]", Name = "LoginUser")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             var result = await _signInManager.PasswordSignInAsync(request.Email!, request.Password!, false, false);
@@ -105,9 +105,33 @@ namespace MyEmailWebApi.Controllers
             return BadRequest(INVALID_LOGIN_ATTEMPT);
         }
 
+        [HttpGet("users", Name = "Users")]
+        public async Task<IActionResult> Users()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user is null)
+            {
+                return Unauthorized();
+            }
+            var roles = await _userManager.GetRolesAsync(user);
+            if (roles.Contains(RoleNames.ADMIN))
+            {
+                return RedirectToAction(nameof(GetAll));
+            }
+            if (roles.Contains(RoleNames.MANAGER))
+            {
+                return RedirectToAction(nameof(DepartmentUsers));
+            }
+            if (roles.Contains(RoleNames.EMPLOYEE))
+            {
+                return RedirectToAction(nameof(Profile));
+            }
+            return Unauthorized();
+        }
+
         // Without sufficient authorization, automatically returns 404 code
         [Authorize(Roles = "Admin,Manager,Employee")]
-        [HttpGet(Name = "UserProfile")]
+        [HttpGet("[action]", Name = "UserProfile")]
         public async Task<IActionResult> Profile()
         {
             var userTask = _userManager.GetUserAsync(User);
@@ -128,7 +152,7 @@ namespace MyEmailWebApi.Controllers
 
         // Without sufficient authorization, automatically returns 404 code
         [Authorize(Roles = "Admin,Manager")]
-        [HttpGet(Name = "DepartmentUsers")]
+        [HttpGet("[action]", Name = "DepartmentUsers")]
         public async Task<IActionResult> DepartmentUsers()
         {
             var userDepartments = User.Claims.Where((claim) => claim.Type == DEPARTMENT).Select((claim) => claim.Value);
@@ -184,7 +208,7 @@ namespace MyEmailWebApi.Controllers
 
         // Without sufficient authorization, automatically returns 404 code
         [Authorize(Roles = "Admin")]
-        [HttpGet(Name = "GetAll")]
+        [HttpGet("[action]", Name = "GetAll")]
         public async Task<IActionResult> GetAll()
         {
             var rolesTask = _userContext.Roles
