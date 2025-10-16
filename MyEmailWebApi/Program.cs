@@ -11,6 +11,8 @@ builder.Services.AddDbContext<EmailContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString(defaultConnection)));
 builder.Services.AddDbContext<UserContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString(defaultConnection)));
+builder.Services.AddDbContext<KpiContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString(defaultConnection)));
 builder.Services.AddIdentity<IdentityUser, IdentityRole>(
     options => options.SignIn.RequireConfirmedAccount = false)
     .AddDefaultTokenProviders()
